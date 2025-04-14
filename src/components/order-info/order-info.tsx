@@ -1,23 +1,45 @@
-import { FC, useMemo } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+
 import { Preloader } from '../ui/preloader';
 import { OrderInfoUI } from '../ui/order-info';
-import { TIngredient } from '@utils-types';
+import { TIngredient, TOrder } from '@utils-types';
+import { useDispatch, useSelector } from '../../services/store';
+import { ingredientsSelector } from '../../services/ingredients/slice';
+import { getOrderByNum } from '../../services/order/actions';
+import { orderModalSelector, ordersSelector } from '../../services/order/slice';
 
 export const OrderInfo: FC = () => {
   /** TODO: взять переменные orderData и ingredients из стора */
-  const orderData = {
-    createdAt: '',
-    ingredients: [],
-    _id: '',
-    status: '',
-    name: '',
-    updatedAt: 'string',
-    number: 0
-  };
+  const dispatch = useDispatch();
+  //получение данных
+  const param = useParams();
+  const orderNumber = Number(param.number);
+  //стейт и данные из стора
+  const [orderData, setOrderData] = useState<TOrder | null>(null);
+  const ingredients: TIngredient[] = useSelector(ingredientsSelector);
+  const modalData = useSelector(orderModalSelector);
+  const data = useSelector(ordersSelector);
 
-  const ingredients: TIngredient[] = [];
+  useEffect(() => {
+    if (orderNumber) {
+      const order: TOrder | undefined = data.find(
+        (item) => item.number === orderNumber
+      );
 
-  /* Готовим данные для отображения */
+      if (order) {
+        setOrderData(order);
+      } else {
+        dispatch(getOrderByNum(orderNumber));
+      }
+    }
+  }, [dispatch, orderNumber]);
+  useEffect(() => {
+    if (modalData && modalData.number === orderNumber) {
+      setOrderData(modalData);
+    }
+  }, [modalData, orderNumber]);
+
   const orderInfo = useMemo(() => {
     if (!orderData || !ingredients.length) return null;
 
@@ -30,7 +52,9 @@ export const OrderInfo: FC = () => {
     const ingredientsInfo = orderData.ingredients.reduce(
       (acc: TIngredientsWithCount, item) => {
         if (!acc[item]) {
-          const ingredient = ingredients.find((ing) => ing._id === item);
+          const ingredient = ingredients.find(
+            (ingredient) => ingredient._id === item
+          );
           if (ingredient) {
             acc[item] = {
               ...ingredient,

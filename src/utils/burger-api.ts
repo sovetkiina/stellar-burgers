@@ -3,18 +3,22 @@ import { TIngredient, TOrder, TOrdersData, TUser } from './types';
 
 const URL = process.env.BURGER_API_URL;
 
+//функция проверки ответа от сервера
 const checkResponse = <T>(res: Response): Promise<T> =>
   res.ok ? res.json() : res.json().then((err) => Promise.reject(err));
 
+//тип для всех ответов от сервера
 type TServerResponse<T> = {
   success: boolean;
 } & T;
 
+//описывает ответ от сервера при обновлении токенов
 type TRefreshResponse = TServerResponse<{
   refreshToken: string;
   accessToken: string;
 }>;
 
+// функция для обновления access-токена, если старый истёк
 export const refreshToken = (): Promise<TRefreshResponse> =>
   fetch(`${URL}/auth/token`, {
     method: 'POST',
@@ -35,6 +39,7 @@ export const refreshToken = (): Promise<TRefreshResponse> =>
       return refreshData;
     });
 
+// функция для запросов с автоматическим обновлением токена
 export const fetchWithRefresh = async <T>(
   url: RequestInfo,
   options: RequestInit
@@ -58,7 +63,7 @@ export const fetchWithRefresh = async <T>(
 };
 
 type TIngredientsResponse = TServerResponse<{
-  data: TIngredient[];
+  data: TIngredient[]; // массив ингредиентов
 }>;
 
 type TFeedsResponse = TServerResponse<{
@@ -71,6 +76,7 @@ type TOrdersResponse = TServerResponse<{
   data: TOrder[];
 }>;
 
+// получает список ингредиентов с сервера
 export const getIngredientsApi = () =>
   fetch(`${URL}/ingredients`)
     .then((res) => checkResponse<TIngredientsResponse>(res))
@@ -79,6 +85,7 @@ export const getIngredientsApi = () =>
       return Promise.reject(data);
     });
 
+// получает общую ленту заказов
 export const getFeedsApi = () =>
   fetch(`${URL}/orders/all`)
     .then((res) => checkResponse<TFeedsResponse>(res))
@@ -87,6 +94,7 @@ export const getFeedsApi = () =>
       return Promise.reject(data);
     });
 
+// получает заказы пользователя, возвращает массив заказов TOrder[]
 export const getOrdersApi = () =>
   fetchWithRefresh<TFeedsResponse>(`${URL}/orders`, {
     method: 'GET',
@@ -100,10 +108,11 @@ export const getOrdersApi = () =>
   });
 
 type TNewOrderResponse = TServerResponse<{
-  order: TOrder;
-  name: string;
+  order: TOrder; //данные о заказе
+  name: string; //название заказа
 }>;
 
+// создание нового заказа на сервере, возвращается объект с данными о новом заказе
 export const orderBurgerApi = (data: string[]) =>
   fetchWithRefresh<TNewOrderResponse>(`${URL}/orders`, {
     method: 'POST',
@@ -123,6 +132,7 @@ type TOrderResponse = TServerResponse<{
   orders: TOrder[];
 }>;
 
+// получает данные о заказе по его номеру
 export const getOrderByNumberApi = (number: number) =>
   fetch(`${URL}/orders/${number}`, {
     method: 'GET',
@@ -143,6 +153,7 @@ type TAuthResponse = TServerResponse<{
   user: TUser;
 }>;
 
+// Функция для регистрации нового пользователя
 export const registerUserApi = (data: TRegisterData) =>
   fetch(`${URL}/auth/register`, {
     method: 'POST',
@@ -160,8 +171,10 @@ export const registerUserApi = (data: TRegisterData) =>
 export type TLoginData = {
   email: string;
   password: string;
+  name?: string;
 };
 
+// Функция для авторизации пользователя
 export const loginUserApi = (data: TLoginData) =>
   fetch(`${URL}/auth/login`, {
     method: 'POST',
@@ -176,6 +189,7 @@ export const loginUserApi = (data: TLoginData) =>
       return Promise.reject(data);
     });
 
+// Функция для отправки запроса на восстановление пароля пользователя
 export const forgotPasswordApi = (data: { email: string }) =>
   fetch(`${URL}/password-reset`, {
     method: 'POST',
@@ -190,6 +204,7 @@ export const forgotPasswordApi = (data: { email: string }) =>
       return Promise.reject(data);
     });
 
+// Функция для сброса пароля пользователя
 export const resetPasswordApi = (data: { password: string; token: string }) =>
   fetch(`${URL}/password-reset/reset`, {
     method: 'POST',
@@ -206,6 +221,7 @@ export const resetPasswordApi = (data: { password: string; token: string }) =>
 
 type TUserResponse = TServerResponse<{ user: TUser }>;
 
+// Функция для получения информации о текущем пользователе
 export const getUserApi = () =>
   fetchWithRefresh<TUserResponse>(`${URL}/auth/user`, {
     headers: {
@@ -213,6 +229,7 @@ export const getUserApi = () =>
     } as HeadersInit
   });
 
+// Функция для обновления данных пользователя
 export const updateUserApi = (user: Partial<TRegisterData>) =>
   fetchWithRefresh<TUserResponse>(`${URL}/auth/user`, {
     method: 'PATCH',
@@ -223,6 +240,7 @@ export const updateUserApi = (user: Partial<TRegisterData>) =>
     body: JSON.stringify(user)
   });
 
+// Функция для выхода пользователя из системы
 export const logoutApi = () =>
   fetch(`${URL}/auth/logout`, {
     method: 'POST',

@@ -16,12 +16,25 @@
 
 .link {
   display: flex;
+  width: fit-content;
+  user-select: none;
   text-decoration: none;
   color: var(--text-inactive-color);
+  transition: all 0.2s ease-in-out 0ms;
+  box-shadow: 0px 0px 25px -20px;
+  color: #fff;
+  padding: 15px 10px;
+  border-radius: 30px;
 }
 
 .link_active {
   color: var(--text-primary-color);
+  transform: scale(0.95);
+}
+
+.link:hover {
+  background-color: #292929;
+  box-shadow: 0px 0px 20px -18px;
 }
 
 .link_position_last {

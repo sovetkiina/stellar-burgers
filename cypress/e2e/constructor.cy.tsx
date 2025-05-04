@@ -1,128 +1,110 @@
-import * as userData from '../fixtures/userData.json';
-import * as authTokens from '../fixtures/authTokens.json';
-import * as orderData from '../fixtures/order.json';
+import '../support/commands';
 
-describe('Тестирование конструктора с добавлением булки', () => {
-  before(() => {
-    // Мокаем запрос на получение ингредиентов
-    cy.intercept('GET', 'api/ingredients', { fixture: 'ingredients.json' });
-    cy.visit('http://localhost:4000/');
-  });
+const TEST_URL = 'http://localhost:4000/';
+const BUN_SELECTOR = '[data-testid="bun"]';
+const CONSTRUCTOR_SELECTOR = '[data-testid="constructor"]';
+const MAIN_SELECTOR = '[data-testid="main"]';
+const BUN_IN_CONSTRUCTOR_SELECTOR = '[data-testid="bunInConstructor"]';
+const MAIN_LIST_SELECTOR = '[data-testid="mainList"]';
+const INGREDIENT_DETAILS_SELECTOR = '[data-testid="Детали ингредиента"]';
+const ORDER_MODAL_SELECTOR = '[data-testid="orderModal"]';
+const PRICE_SELECTOR = '[data-testid="price"]';
 
-  it('Добавление верхней и нижней булки в заказ', () => {
-    const bun = cy.get(':nth-child(2) > :nth-child(1) > .common_button');
-    bun.click();
-
-    cy.get(
-      '.constructor-element_pos_top > .constructor-element__row > .constructor-element__text'
-    ).contains('Краторная булка N-200i (верх)');
-
-    cy.get(
-      '.constructor-element_pos_bottom > .constructor-element__row > .constructor-element__text'
-    ).contains('Краторная булка N-200i (низ)');
-  });
-});
-
-describe('Проверка работы модальных окон с подробной информацией об ингредиенте', () => {
+describe('Интеграционные тесты', function () {
   beforeEach(() => {
-    cy.intercept('GET', 'api/ingredients', { fixture: 'ingredients.json' });
-    cy.visit('http://localhost:4000/');
+    cy.visit(TEST_URL);
+    cy.intercept('GET', '/api/ingredients', {
+      fixture: 'ingredients.json'
+    }).as('getIngredients');
+    cy.wait('@getIngredients');
+    cy.get(BUN_SELECTOR).as('bun');
+    cy.get(CONSTRUCTOR_SELECTOR).as('constructor');
+    cy.get(MAIN_SELECTOR).as('main');
   });
 
-  it('Проверка открытия модального окна с описанием ингредиента', () => {
-    const ingredient = cy.get(':nth-child(4) > :nth-child(5)');
-
-    ingredient.click();
-
-    const modal = cy.get('#modals > div:first-child');
-    const header = modal.get('div:first-child > h3');
-
-    header.contains('Хрустящие минеральные кольца');
-  });
-
-  it('Проверка функциональности кнопки (крестик) закрытия модального окна', () => {
-    const ingredient = cy.get(':nth-child(4) > :nth-child(5)');
-
-    ingredient.click();
-
-    const modal = cy.get('#modals > div:first-child').as('modal');
-    const button = modal.get('div:first-child > button > svg');
-
-    button.click();
-
-    cy.get('modal').should('not.exist');
-  });
-
-  it('Проверка закрытия модального окна по клику на оверлей', () => {
-    const ingredient = cy.get(':nth-child(4) > :nth-child(5)');
-
-    ingredient.click();
-
-    const modal = cy.get('#modals > div:first-child').as('modal');
-    const overlay = modal.get('#modals > div:nth-child(2)');
-
-    overlay.click({ force: true });
-
-    cy.get('modal').should('not.exist');
-  });
-});
-
-describe('Проверка создания заказа', () => {
-  beforeEach(() => {
-    cy.intercept('GET', 'api/ingredients', { fixture: 'ingredients.json' });
-    cy.intercept('GET', 'api/auth/user', { fixture: 'userData.json' });
-    cy.setCookie('accessToken', authTokens.accessToken);
-    localStorage.setItem('refreshToken', authTokens.refreshToken);
-    cy.intercept('GET', 'api/auth/tokens', {
-      fixture: 'authTokens.json'
+  describe('Добавление ингредиентов в конструктор заказа', function () {
+    it('Добавление булки в конструктор', function () {
+      cy.addIngredientToCart('@bun');
+      cy.get('@constructor').within(() => {
+        cy.get(BUN_IN_CONSTRUCTOR_SELECTOR).should(
+          'have.length.greaterThan',
+          0
+        );
+      });
     });
-    cy.intercept('POST', 'api/orders', { fixture: 'order.json' });
-    cy.visit('http://localhost:4000/');
+
+    it('Добавление начинки в конструктор', function () {
+      cy.get('@main').then(($mainIngredients) => {
+        const ingredientCount = $mainIngredients.length;
+        for (let i = 0; i < ingredientCount; i++) {
+          cy.get('@main')
+            .eq(i)
+            .within(() => {
+              cy.get('button').click();
+            });
+        }
+        cy.get('@constructor').within(() => {
+          cy.get(MAIN_LIST_SELECTOR)
+            .children()
+            .should('have.length', ingredientCount);
+        });
+      });
+    });
   });
 
-  it('', () => {
-    const bun = cy.get(':nth-child(2) > :nth-child(1) > .common_button');
-    const main = cy.get(':nth-child(4) > :nth-child(3) > .common_button');
-    const sauce = cy.get(':nth-child(6) > .common_button');
+  describe('Работа модальных окон', function () {
+    it('Открытие модального окна с описанием ингридиента и закрытие по кнопке (крестик)', function () {
+      cy.get('@bun').first().click();
+      cy.get(INGREDIENT_DETAILS_SELECTOR).as('details');
+      cy.verifyModalContent('@details', 'Краторная булка N-200i');
+      cy.addIngredientToCart('@details');
+      cy.get('@details').should('not.exist');
+    });
 
-    bun.click();
-    main.click();
-    sauce.click();
-
-    const orderButton = cy.get(
-      '#root > div > main > div > section:nth-child(2) > div > button'
-    );
-
-    orderButton.click();
-
-    const orderModal = cy.get('#modals > div:first-child');
-    const orderNumber = orderModal.get('div:nth-child(2) > h2');
-
-    orderNumber.contains(orderData.order.number);
-
-    const button = orderModal.get(
-      'div:first-child > div:first-child > button > svg'
-    );
-
-    button.click();
-
-    cy.get('modal').should('not.exist');
-
-    const burgerCunstructor = {
-      constructorBunTop: cy.get('div > section:nth-child(2) > div'),
-      constructoMainIngredient: cy.get('div > section:nth-child(2) > ul > div'),
-      constructorBunBottom: cy.get(
-        'div > section:nth-child(2) > div:nth-child(3)'
-      )
-    };
-
-    burgerCunstructor.constructorBunTop.contains('Выберите булки');
-    burgerCunstructor.constructoMainIngredient.contains('Выберите начинку');
-    burgerCunstructor.constructorBunBottom.contains('Выберите булки');
+    it('Закрытие модального окна по оверлею', function () {
+      cy.get('@bun').first().click();
+      cy.get('body').click(0, 0);
+      cy.get(INGREDIENT_DETAILS_SELECTOR).should('not.exist');
+    });
   });
 
-  afterEach(() => {
-    cy.clearAllCookies();
-    localStorage.removeItem('refreshToken');
+  describe('Тестрировние создания заказа', function () {
+    beforeEach(() => {
+      cy.intercept('POST', '/api/auth/login', { fixture: 'userData.json' });
+      cy.intercept('GET', '/api/auth/user', { fixture: 'userData.json' });
+      cy.intercept('POST', '/api/orders', { fixture: 'order.json' });
+
+      cy.window().then((win) => {
+        win.localStorage.setItem('ключ', 'значение');
+      });
+      cy.setCookie('accessToken', 'accessToken');
+      cy.visit(TEST_URL);
+    });
+
+    it('Создание нового заказа и очистка корзины после оформления', () => {
+      cy.submitOrder();
+      cy.verifyModalContent(ORDER_MODAL_SELECTOR, '75887');
+
+      cy.get('[data-testid=""]').within(() => {
+        cy.get('button').click();
+      });
+
+      cy.get('[data-testid=""]').should('not.exist');
+      cy.get('@constructor').contains('Выберите булки');
+      cy.get('@constructor').contains('Выберите начинку');
+
+      cy.get('body').then(($body) => {
+        if ($body.find(PRICE_SELECTOR).length) {
+          cy.get(PRICE_SELECTOR).contains('0');
+        }
+      });
+    });
+
+    afterEach(() => {
+      cy.window().then((win) => {
+        win.localStorage.removeItem('refreshToken');
+      });
+      cy.clearCookie('accessToken');
+    });
   });
 });

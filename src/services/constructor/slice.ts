@@ -6,7 +6,7 @@ export interface IConstructorState {
   ingredients: TConstructorIngredient[];
 }
 
-const initialState: IConstructorState = {
+export const initialState: IConstructorState = {
   bun: null,
   ingredients: []
 };
@@ -71,3 +71,5 @@ export const {
   moveIngredientDown,
   deleteIngredient
 } = constructorSlice.actions;
+
+export default constructorSlice.reducer;

@@ -14,7 +14,7 @@ interface IOrderState {
   totalToday: number | null;
 }
 
-const initialState: IOrderState = {
+export const initialState: IOrderState = {
   order: null,
   name: null,
   error: null,
@@ -116,3 +116,4 @@ export const {
 } = orderSlice.selectors;
 
 export const { resetOrder } = orderSlice.actions;
+export default orderSlice.reducer;

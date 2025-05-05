@@ -8,7 +8,7 @@ interface IUserState {
   error: string | null | undefined;
 }
 
-const initialState: IUserState = {
+export const initialState: IUserState = {
   user: null,
   isAuthChecked: false,
   error: null
@@ -73,3 +73,5 @@ export const { selectCurrentUser, selectIsAuthChecked, selectUserName } =
   authSlice.selectors;
 
 export const { setUser, setIsAuthChecked } = authSlice.actions;
+
+export default authSlice.reducer;
